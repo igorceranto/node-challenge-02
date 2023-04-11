@@ -13,6 +13,15 @@ export async function usuariosRoutes( app: FastifyInstance ){
         email: z.string(),
         age: z.number()
     })
+    
+    // - metodo apenas para axuliar nos testes
+
+    app.delete('/clean', async (request, reply) => {
+        await knex('usuario').del()
+        return reply.status(202).send({
+            message: 'Usuários deletados com sucesso.'
+        })
+    })
 
     app.delete('/:id', async (request, reply) => {
         const getIdParamSchema = z.object({
@@ -32,6 +41,14 @@ export async function usuariosRoutes( app: FastifyInstance ){
     app.post('/', async (request, reply) => {
 
         const { fist_name, last_name, email, age } = typeSchemaUsuario.parse(request.body)
+
+        const quantidade = await knex('usuario').count({ count: '*' }).where({ email }).first() as { count: number }
+
+        if(quantidade.count > 0){
+            return reply.status(400).send({
+                message: 'Email já cadastrado.'
+            })
+        }
 
         let session_id = request.cookies.sessionId
 
@@ -53,10 +70,15 @@ export async function usuariosRoutes( app: FastifyInstance ){
         }).returning('id')
 
         return reply.status(201).send({
-            message: 'Usuário criado com sucesso - ',
+            message: 'Usuário criado com sucesso.',
             id: usuarioID[0].id,
         })
 
+    })
+
+    app.get('/', async (request, reply) => {
+        const usuarios = await knex('usuario').select('*')
+        return reply.status(200).send(usuarios)
     })
 
 }
